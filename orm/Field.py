@@ -10,6 +10,7 @@ class Field(object):
         return '<%s, %s:%s>' % (self.__class__.__name__, self.column_type, self.name)
 
 
+
 class StringField(Field):
 
     def __init__(self, name=None, primary_key=False, default=None, length=100):
