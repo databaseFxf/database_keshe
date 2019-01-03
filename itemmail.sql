@@ -1,3 +1,4 @@
+-- MySQL dump 10.13  Distrib 8.0.11, for macos10.13 (x86_64)
 --
 -- Host: localhost    Database: itemmail
 -- ------------------------------------------------------
@@ -18,6 +19,19 @@
 -- Table structure for table `celebrate_movies`
 --
 
+DROP TABLE IF EXISTS `celebrate_movies`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+ SET character_set_client = utf8mb4 ;
+CREATE TABLE `celebrate_movies` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `movie_id` int(11) DEFAULT NULL,
+  `user_id` int(11) DEFAULT NULL,
+  `role` varchar(10) DEFAULT NULL,
+  `this_profession` varchar(20) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `celebrate_movies_id_uindex` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `celebrate_movies`
@@ -62,6 +76,19 @@ UNLOCK TABLES;
 -- Table structure for table `movie_sources`
 --
 
+DROP TABLE IF EXISTS `movie_sources`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+ SET character_set_client = utf8mb4 ;
+CREATE TABLE `movie_sources` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `movie_id` int(11) DEFAULT NULL,
+  `source_name` varchar(20) DEFAULT NULL,
+  `source_url` varchar(50) DEFAULT NULL,
+  `source_information` varchar(20) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `movie_sources_id_uindex` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `movie_sources`
@@ -165,6 +192,22 @@ UNLOCK TABLES;
 -- Table structure for table `users`
 --
 
+DROP TABLE IF EXISTS `users`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+ SET character_set_client = utf8mb4 ;
+CREATE TABLE `users` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `username` varchar(10) DEFAULT NULL,
+  `password` varchar(10) DEFAULT NULL,
+  `name` varchar(10) DEFAULT NULL,
+  `nick_name` varchar(10) DEFAULT NULL,
+  `email` varchar(14) DEFAULT NULL,
+  `phone` varchar(14) DEFAULT NULL,
+  `registration_time` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `users_id_uindex` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `users`
@@ -184,3 +227,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
+-- Dump completed on 2019-01-03 18:10:28
