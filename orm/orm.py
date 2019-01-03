@@ -1,6 +1,7 @@
 import asyncio, logging
 import aiomysql
-from . import Field
+from .Field import Field
+
 
 def log(sql, args=()):
     logging.info('SQL: %s' % sql)
@@ -47,15 +48,16 @@ async def insert(tx=None, sql=None, args=None):
     log(sql, args)
     global __pool
     if tx is None:
-        conn = await __pool.get()
-    else:
-        conn = tx
-    try:
-        async with conn.cursor(aiomysql.DictCursor) as cur:
-            await cur.execute(sql.replace('?', '%s'), args)
+        async with __pool.get() as con:
+            cur = await con.cursor()
+            await cur.execute(sql.replace('?', '%s'), args or ())
             rs = await cur.fetchall()
-    except Exception as e:
-        raise
+            await cur.close()
+    else:
+        cur = await tx.cursor()
+        await cur.execute(sql.replace('?', '%s'), args or ())
+        rs = await cur.fetchall()
+        await cur.close()
     return len(rs), rs
 
 
@@ -63,31 +65,33 @@ async def update(tx=None, sql=None, args=None):
     log(sql, args)
     global __pool
     if tx is None:
-        conn = await __pool.get()
+        async with __pool.get() as con:
+            cur = await con.cursor()
+            await cur.execute(sql.replace('?', '%s'), args or ())
+            rs = cur.rowcount
+            await cur.close()
     else:
-        conn = tx
-    try:
-        async with conn.cursor(aiomysql.DictCursor) as cur:
-            await cur.execute(sql.replace('?', '%s'), args)
-            rs = cur.fetchall()
-    except Exception as e:
-        raise
-    return len(rs), rs
+        cur = await tx.cursor()
+        await cur.execute(sql.replace('?', '%s'), args or ())
+        rs = cur.rowcount
+        await cur.close()
+    return rs
 
 
 async def delete(tx=None, sql=None, args=None):
     log(sql)
     global __pool
     if tx is None:
-        conn = await __pool.get()
-    else:
-        conn = tx
-    try:
-        async with conn.cursor(aiomysql.DictCursor) as cur:
-            await cur.execute(sql.replace('?', '%s'), args)
+        async with __pool.get() as con:
+            cur = await con.cursor()
+            await cur.execute(sql.replace('?', '%s'), args or ())
             affected = cur.rowcount
-    except Exception as e:
-        raise
+            await cur.close()
+    else:
+        cur = await tx.cursor()
+        await cur.execute(sql.replace('?', '%s'), args or ())
+        affected = cur.rowcount
+        await cur.close()
     return affected
 
 
@@ -135,6 +139,9 @@ class ModelMetaclass(type):
             tableName, ', '.join(map(lambda f: '`%s`=?' % (mappings.get(f).name or f), fields)), primaryKey)
         attrs['__delete__'] = 'delete from `%s` where `%s`=?' % (tableName, primaryKey)
         return type.__new__(cls, name, bases, attrs)
+
+    def __getattr__(cls, item):
+        return cls.__mappings__[item]
 
 
 class Model(dict, metaclass=ModelMetaclass):
@@ -192,7 +199,7 @@ class Model(dict, metaclass=ModelMetaclass):
                 args.extend(limit)
             else:
                 raise ValueError('Invalid limit value: %s' % str(limit))
-        rs = await select(' '.join(sql), args)
+        (rs, length) = await select(' '.join(sql), args)
         return [cls(**r) for r in rs]
 
     @classmethod
@@ -210,26 +217,23 @@ class Model(dict, metaclass=ModelMetaclass):
     @classmethod
     async def find(cls, pk):
         ' find object by primary key. '
-        rs = await select('%s where `%s`=?' % (cls.__select__, cls.__primary_key__), [pk], 1)
+        (rs, length) = await select('%s where `%s`=?' % (cls.__select__, cls.__primary_key__), [pk], 1)
         if len(rs) == 0:
             return None
         return cls(**rs[0])
 
-    @classmethod
     async def save(self, tx=None):
         args = list(map(self.getValueOrDefault, self.__fields__))
         args.append(self.getValueOrDefault(self.__primary_key__))
         (rows, rs) = await insert(tx, self.__insert__, args)
         return rows, rs
 
-    @classmethod
     async def change(self, tx=None):
         args = list(map(self.getValue, self.__fields__))
         args.append(self.getValue(self.__primary_key__))
-        (rows, rs) = await update(tx, self.__update__, args)
-        return rows, rs
+        rs = await update(tx, self.__update__, args)
+        return rs
 
-    @classmethod
     async def remove(self, tx=None):
         args = [self.getValue(self.__primary_key__)]
         rows = await delete(tx, self.__delete__, args)

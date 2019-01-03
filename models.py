@@ -1,5 +1,5 @@
 from orm.Field import *
-from orm.orm import *
+from orm.orm import Model
 
 
 class User(Model):
@@ -49,7 +49,8 @@ class Celebrate(Model):
 class CelebrateMovie(Model):
     __table__ = "celebrate_movies"
     id = IntegerField(primary_key=True)
-    movie_id = StringField(length=10)
+    user_id = IntegerField()
+    movie_id = IntegerField()
     role = StringField(length=10)
     this_profession = StringField(length=20)
 
