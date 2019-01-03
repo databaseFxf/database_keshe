@@ -1,7 +1,6 @@
 import asyncio, logging
-
 import aiomysql
-
+from . import Field
 
 def log(sql, args=()):
     logging.info('SQL: %s' % sql)
@@ -24,6 +23,12 @@ async def create_pool(loop, **kw):
     )
 
 
+async def get_conn():
+    global __pool
+    async with __pool.get() as conn:
+        return conn
+
+
 async def select(sql, args, size=None):
     log(sql, args)
     global __pool
@@ -35,25 +40,55 @@ async def select(sql, args, size=None):
             else:
                 rs = await cur.fetchall()
         logging.info('rows returned: %s' % len(rs))
-        return rs
+        return rs, len(rs)
 
 
-async def execute(sql, args, autocommit=True):
+async def insert(tx=None, sql=None, args=None):
+    log(sql, args)
+    global __pool
+    if tx is None:
+        conn = await __pool.get()
+    else:
+        conn = tx
+    try:
+        async with conn.cursor(aiomysql.DictCursor) as cur:
+            await cur.execute(sql.replace('?', '%s'), args)
+            rs = await cur.fetchall()
+    except Exception as e:
+        raise
+    return len(rs), rs
+
+
+async def update(tx=None, sql=None, args=None):
+    log(sql, args)
+    global __pool
+    if tx is None:
+        conn = await __pool.get()
+    else:
+        conn = tx
+    try:
+        async with conn.cursor(aiomysql.DictCursor) as cur:
+            await cur.execute(sql.replace('?', '%s'), args)
+            rs = cur.fetchall()
+    except Exception as e:
+        raise
+    return len(rs), rs
+
+
+async def delete(tx=None, sql=None, args=None):
     log(sql)
-    async with __pool.get() as conn:
-        if not autocommit:
-            await conn.begin()
-        try:
-            async with conn.cursor(aiomysql.DictCursor) as cur:
-                await cur.execute(sql.replace('?', '%s'), args)
-                affected = cur.rowcount
-            if not autocommit:
-                await conn.commit()
-        except BaseException as e:
-            if not autocommit:
-                await conn.rollback()
-            raise
-        return affected
+    global __pool
+    if tx is None:
+        conn = await __pool.get()
+    else:
+        conn = tx
+    try:
+        async with conn.cursor(aiomysql.DictCursor) as cur:
+            await cur.execute(sql.replace('?', '%s'), args)
+            affected = cur.rowcount
+    except Exception as e:
+        raise
+    return affected
 
 
 def create_args_string(num):
@@ -61,48 +96,6 @@ def create_args_string(num):
     for n in range(num):
         L.append('?')
     return ', '.join(L)
-
-
-class Field(object):
-
-    def __init__(self, name, column_type, primary_key, default):
-        self.name = name
-        self.column_type = column_type
-        self.primary_key = primary_key
-        self.default = default
-
-    def __str__(self):
-        return '<%s, %s:%s>' % (self.__class__.__name__, self.column_type, self.name)
-
-
-class StringField(Field):
-
-    def __init__(self, name=None, primary_key=False, default=None, ddl='varchar(100)'):
-        super().__init__(name, ddl, primary_key, default)
-
-
-class BooleanField(Field):
-
-    def __init__(self, name=None, default=False):
-        super().__init__(name, 'boolean', False, default)
-
-
-class IntegerField(Field):
-
-    def __init__(self, name=None, primary_key=False, default=0):
-        super().__init__(name, 'bigint', primary_key, default)
-
-
-class FloatField(Field):
-
-    def __init__(self, name=None, primary_key=False, default=0.0):
-        super().__init__(name, 'real', primary_key, default)
-
-
-class TextField(Field):
-
-    def __init__(self, name=None, default=None):
-        super().__init__(name, 'text', False, default)
 
 
 class ModelMetaclass(type):
@@ -122,12 +115,12 @@ class ModelMetaclass(type):
                 if v.primary_key:
                     # 找到主键:
                     if primaryKey:
-                        raise StandardError('Duplicate primary key for field: %s' % k)
+                        raise Exception('Duplicate primary key for field: %s' % k)
                     primaryKey = k
                 else:
                     fields.append(k)
         if not primaryKey:
-            raise StandardError('Primary key not found.')
+            raise Exception('Primary key not found.')
         for k in mappings.keys():
             attrs.pop(k)
         escaped_fields = list(map(lambda f: '`%s`' % f, fields))
@@ -137,9 +130,9 @@ class ModelMetaclass(type):
         attrs['__fields__'] = fields  # 除主键外的属性名
         attrs['__select__'] = 'select `%s`, %s from `%s`' % (primaryKey, ', '.join(escaped_fields), tableName)
         attrs['__insert__'] = 'insert into `%s` (%s, `%s`) values (%s)' % (
-        tableName, ', '.join(escaped_fields), primaryKey, create_args_string(len(escaped_fields) + 1))
+            tableName, ', '.join(escaped_fields), primaryKey, create_args_string(len(escaped_fields) + 1))
         attrs['__update__'] = 'update `%s` set %s where `%s`=?' % (
-        tableName, ', '.join(map(lambda f: '`%s`=?' % (mappings.get(f).name or f), fields)), primaryKey)
+            tableName, ', '.join(map(lambda f: '`%s`=?' % (mappings.get(f).name or f), fields)), primaryKey)
         attrs['__delete__'] = 'delete from `%s` where `%s`=?' % (tableName, primaryKey)
         return type.__new__(cls, name, bases, attrs)
 
@@ -170,6 +163,10 @@ class Model(dict, metaclass=ModelMetaclass):
                 logging.debug('using default value for %s: %s' % (key, str(value)))
                 setattr(self, key, value)
         return value
+
+    @classmethod
+    async def query(cls):
+        pass
 
     @classmethod
     async def findAll(cls, where=None, args=None, **kw):
@@ -218,24 +215,22 @@ class Model(dict, metaclass=ModelMetaclass):
             return None
         return cls(**rs[0])
 
-    async def save(self):
+    @classmethod
+    async def save(self, tx=None):
         args = list(map(self.getValueOrDefault, self.__fields__))
         args.append(self.getValueOrDefault(self.__primary_key__))
-        rows = await execute(self.__insert__, args)
-        if rows != 1:
-            logging.warn('failed to insert record: affected rows: %s' % rows)
+        (rows, rs) = await insert(tx, self.__insert__, args)
+        return rows, rs
 
-    async def update(self):
+    @classmethod
+    async def change(self, tx=None):
         args = list(map(self.getValue, self.__fields__))
         args.append(self.getValue(self.__primary_key__))
-        rows = await execute(self.__update__, args)
-        if rows != 1:
-            logging.warn('failed to update by primary key: affected rows: %s' % rows)
+        (rows, rs) = await update(tx, self.__update__, args)
+        return rows, rs
 
-    async def remove(self):
+    @classmethod
+    async def remove(self, tx=None):
         args = [self.getValue(self.__primary_key__)]
-        rows = await execute(self.__delete__, args)
-        if rows != 1:
-            logging.warn('failed to remove by primary key: affected rows: %s' % rows)
-
-
+        rows = await delete(tx, self.__delete__, args)
+        return rows
