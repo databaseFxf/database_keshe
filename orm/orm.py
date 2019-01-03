@@ -1,6 +1,6 @@
 import asyncio, logging
 import aiomysql
-
+from . import Field
 
 def log(sql, args=()):
     logging.info('SQL: %s' % sql)
@@ -96,49 +96,6 @@ def create_args_string(num):
     for n in range(num):
         L.append('?')
     return ', '.join(L)
-
-
-class Field(object):
-
-    def __init__(self, name, column_type, primary_key, default):
-        self.name = name
-        self.column_type = column_type
-        self.primary_key = primary_key
-        self.default = default
-
-    def __str__(self):
-        return '<%s, %s:%s>' % (self.__class__.__name__, self.column_type, self.name)
-
-
-class StringField(Field):
-
-    def __init__(self, name=None, primary_key=False, default=None, num=100):
-        ddl = 'varchar({})'.format(num)
-        super().__init__(name, ddl, primary_key, default)
-
-
-class BooleanField(Field):
-
-    def __init__(self, name=None, default=False):
-        super().__init__(name, 'boolean', False, default)
-
-
-class IntegerField(Field):
-
-    def __init__(self, name=None, primary_key=False, default=0):
-        super().__init__(name, 'bigint', primary_key, default)
-
-
-class FloatField(Field):
-
-    def __init__(self, name=None, primary_key=False, default=0.0):
-        super().__init__(name, 'real', primary_key, default)
-
-
-class TextField(Field):
-
-    def __init__(self, name=None, default=None):
-        super().__init__(name, 'text', False, default)
 
 
 class ModelMetaclass(type):
@@ -277,19 +234,3 @@ class Model(dict, metaclass=ModelMetaclass):
         args = [self.getValue(self.__primary_key__)]
         rows = await delete(tx, self.__delete__, args)
         return rows
-
-
-class Transaction:
-    def __init__(self, conn):
-        self.conn = conn
-
-    async def begin(self):
-        await self.conn.begin()
-
-    async def commit(self):
-        await self.conn.commit()
-        await self.conn.close()
-
-    async def roll_back(self):
-        await self.conn.roll_back()
-        await self.conn.close()
