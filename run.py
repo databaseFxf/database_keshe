@@ -1,5 +1,6 @@
 import asyncio
 from orm import orm
+from model import *
 
 loop = asyncio.get_event_loop()
 
@@ -16,4 +17,5 @@ sql_config = dict(host='localhost',
 
 loop.run_until_complete(orm.create_pool(loop, **sql_config))
 
+user = User()
 
