@@ -12,8 +12,8 @@ class Field(object):
 
 class StringField(Field):
 
-    def __init__(self, name=None, primary_key=False, default=None, num=100):
-        ddl = 'varchar({})'.format(num)
+    def __init__(self, name=None, primary_key=False, default=None, length=100):
+        ddl = 'varchar({})'.format(length)
         super().__init__(name, ddl, primary_key, default)
 
 
@@ -26,16 +26,21 @@ class BooleanField(Field):
 class IntegerField(Field):
 
     def __init__(self, name=None, primary_key=False, default=0):
-        super().__init__(name, 'bigint', primary_key, default)
+        super().__init__(name, 'int', primary_key, default)
 
 
 class FloatField(Field):
 
     def __init__(self, name=None, primary_key=False, default=0.0):
-        super().__init__(name, 'real', primary_key, default)
+        super().__init__(name, 'float', primary_key, default)
 
 
 class TextField(Field):
 
     def __init__(self, name=None, default=None):
         super().__init__(name, 'text', False, default)
+
+
+class TimeField(Field):
+    def __init__(self, name=None, default=None):
+        super().__init__(name, 'timestamp', False, default)
