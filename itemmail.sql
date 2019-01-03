@@ -18,19 +18,6 @@
 -- Table structure for table `celebrate_movies`
 --
 
-DROP TABLE IF EXISTS `celebrate_movies`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
- SET character_set_client = utf8mb4 ;
-CREATE TABLE `celebrate_movies` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `movie_id` int(11) DEFAULT NULL,
-  `user_id` int(11) DEFAULT NULL,
-  `role` varchar(10) DEFAULT NULL,
-  `this_profession` varchar(20) DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `celebrate_movies_id_uindex` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `celebrate_movies`
@@ -75,19 +62,6 @@ UNLOCK TABLES;
 -- Table structure for table `movie_sources`
 --
 
-DROP TABLE IF EXISTS `movie_sources`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
- SET character_set_client = utf8mb4 ;
-CREATE TABLE `movie_sources` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `movie_id` int(11) DEFAULT NULL,
-  `source_name` varchar(20) DEFAULT NULL,
-  `source_url` varchar(50) DEFAULT NULL,
-  `source_information` varchar(20) DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `movie_sources_id_uindex` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `movie_sources`
