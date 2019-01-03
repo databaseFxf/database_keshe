@@ -165,22 +165,6 @@ UNLOCK TABLES;
 -- Table structure for table `users`
 --
 
-DROP TABLE IF EXISTS `users`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
- SET character_set_client = utf8mb4 ;
-CREATE TABLE `users` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `username` varchar(10) DEFAULT NULL,
-  `password` varchar(10) DEFAULT NULL,
-  `name` varchar(10) DEFAULT NULL,
-  `nick_name` varchar(10) DEFAULT NULL,
-  `email` varchar(14) DEFAULT NULL,
-  `phone` varchar(14) DEFAULT NULL,
-  `registration_time` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `users_id_uindex` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `users`
